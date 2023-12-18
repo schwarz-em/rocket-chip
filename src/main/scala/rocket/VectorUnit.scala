@@ -4,14 +4,17 @@ import chisel3._
 import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile._
+import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.tilelink._
+
+case object BuildVectorUnit extends Field[Option[Parameters => RocketVectorUnit]](None) //Do this without Seq?
 
 case class RocketCoreVectorParams(
-  build: Parameters => RocketVectorUnit,
+  //build: Parameters => RocketVectorUnit,
   vLen: Int,
   vMemDataBits: Int,
   decoder: Parameters => RocketVectorDecoder
 )
-
 
 class VectorCoreIO(implicit p: Parameters) extends CoreBundle()(p) {
   val status = Input(new MStatus)
@@ -62,13 +65,32 @@ class VectorCoreIO(implicit p: Parameters) extends CoreBundle()(p) {
   val backend_busy = Output(Bool())
 }
 
-abstract class RocketVectorUnit(implicit p: Parameters) extends CoreModule()(p) {
+abstract class RocketVectorUnit(implicit p: Parameters) extends LazyModule {
+  val module: RocketVectorUnitModuleImp
+  val node: TLNode = TLIdentityNode()
+}
+
+class RocketVectorUnitModuleImp(outer: RocketVectorUnit) extends LazyModuleImp(outer) {
   val io = IO(new Bundle {
     val core = new VectorCoreIO
     val tlb = Flipped(new DCacheTLBPort)
     val dmem = new HellaCacheIO
   })
 }
+
+trait HasVectorUnit { this: BaseTile =>
+  implicit val p: Parameters
+  val vector: Option[RocketVectorUnit] = p(BuildVectorUnit).map(_(p)) //LazyModules the vector unit(s?)
+  vector.map(_.node).foreach {tl => tlMasterXbar.node :=* tl} //Map because vector unit might not exist
+}
+
+/*abstract class RocketVectorUnit(implicit p: Parameters) extends CoreModule()(p) {
+  val io = IO(new Bundle {
+    val core = new VectorCoreIO
+    val tlb = Flipped(new DCacheTLBPort)
+    val dmem = new HellaCacheIO
+  })
+}*/
 
 abstract class RocketVectorDecoder(implicit p: Parameters) extends CoreModule()(p) {
   val io = IO(new Bundle {
