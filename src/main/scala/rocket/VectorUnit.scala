@@ -7,10 +7,9 @@ import freechips.rocketchip.tile._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 
-case object BuildVectorUnit extends Field[Option[Parameters => RocketVectorUnit]](None) //Do this without Seq?
+case object BuildVectorUnit extends Field[Option[Parameters => RocketVectorUnit]](None)
 
 case class RocketCoreVectorParams(
-  //build: Parameters => RocketVectorUnit,
   vLen: Int,
   vMemDataBits: Int,
   decoder: Parameters => RocketVectorDecoder
@@ -80,17 +79,9 @@ class RocketVectorUnitModuleImp(outer: RocketVectorUnit) extends LazyModuleImp(o
 
 trait HasVectorUnit { this: BaseTile =>
   implicit val p: Parameters
-  val vector: Option[RocketVectorUnit] = p(BuildVectorUnit).map(_(p)) //LazyModules the vector unit(s?)
+  val vector: Option[RocketVectorUnit] = if (tileParams.core.useVector) p(BuildVectorUnit).map(_(p)) else None //LazyModules the vector unit
   vector.map(_.node).foreach {tl => tlMasterXbar.node :=* tl} //Map because vector unit might not exist
 }
-
-/*abstract class RocketVectorUnit(implicit p: Parameters) extends CoreModule()(p) {
-  val io = IO(new Bundle {
-    val core = new VectorCoreIO
-    val tlb = Flipped(new DCacheTLBPort)
-    val dmem = new HellaCacheIO
-  })
-}*/
 
 abstract class RocketVectorDecoder(implicit p: Parameters) extends CoreModule()(p) {
   val io = IO(new Bundle {
