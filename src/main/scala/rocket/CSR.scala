@@ -753,11 +753,11 @@ class CSRFile(
   // mtype CSR below. Internally this RTL still embeds them in VType's otherwise-
   // reserved bits (see its comment), so mask them out of the ISA-visible vtype
   // CSR read rather than changing that internal representation.
-  val read_vtype = {
+  lazy val read_vtype = {  // lazy: reg_vconfig is None on cores without a vector unit
     val vt = reg_vconfig.get.vtype
     Cat(vt.vill, 0.U((xLen - 10).W), vt.altfmt, vt.vma, vt.vta, vt.vsew, vt.vlmul_sign, vt.vlmul_mag)
   }
-  val read_mtype = {
+  lazy val read_mtype = {
     val vt = reg_vconfig.get.vtype
     MatrixConfig.widenDecode(vt.vtwiden) | (vt.tk << 5) | (vt.tm << 10)
   }
